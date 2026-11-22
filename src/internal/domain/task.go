@@ -9,6 +9,7 @@ type TaskStatus string
 
 const (
 	StatusPending    TaskStatus = "pending"
+	StatusQueued     TaskStatus = "queued"
 	StatusProcessing TaskStatus = "processing"
 	StatusCompleted  TaskStatus = "completed"
 	StatusFailed     TaskStatus = "failed"
@@ -20,6 +21,7 @@ const (
 	GeneratePlaylist      TaskType = "generate_playlist"
 	AnalyzeLibrary        TaskType = "analyze_library"
 	DiscoverSimilarTracks TaskType = "discover_similar_tracks"
+	PlayerControl         TaskType = "player_control"
 )
 
 type PlaylistInput struct {
@@ -45,6 +47,7 @@ type TaskInput struct {
 	Playlist   *PlaylistInput   `json:",omitempty"`
 	Analysis   *AnalysisInput   `json:",omitempty"`
 	Similarity *SimilarityInput `json:",omitempty"`
+	Player     *PlayerInput     `json:",omitempty"`
 }
 
 func (in TaskInput) Validate() error {
@@ -56,6 +59,9 @@ func (in TaskInput) Validate() error {
 		count++
 	}
 	if in.Similarity != nil {
+		count++
+	}
+	if in.Player != nil {
 		count++
 	}
 	if count != 1 {
@@ -81,6 +87,11 @@ func (in TaskInput) Validate() error {
 		if in.Similarity == nil || strings.TrimSpace(in.Similarity.ReferenceTrackID) == "" || in.Similarity.MaxMatches <= 0 {
 			return fmt.Errorf("%w: reference ID and positive match limit required", ErrInvalidInput)
 		}
+	case PlayerControl:
+		if in.Player == nil {
+			return fmt.Errorf("%w: player input required", ErrInvalidInput)
+		}
+		return in.Player.Validate()
 	default:
 		return fmt.Errorf("%w: unsupported operation %q", ErrInvalidInput, in.Kind)
 	}
@@ -95,10 +106,23 @@ type Task struct {
 	Error  string      `json:",omitempty"`
 }
 
+var allowedTransitions = map[TaskStatus][]TaskStatus{
+	StatusPending:    {StatusQueued, StatusProcessing},
+	StatusQueued:     {StatusProcessing},
+	StatusProcessing: {StatusCompleted, StatusFailed},
+}
+
+func CanTransition(from, to TaskStatus) bool {
+	for _, allowed := range allowedTransitions[from] {
+		if allowed == to {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *Task) Transition(next TaskStatus) error {
-	valid := t.Status == StatusPending && next == StatusProcessing ||
-		t.Status == StatusProcessing && (next == StatusCompleted || next == StatusFailed)
-	if !valid {
+	if !CanTransition(t.Status, next) {
 		return fmt.Errorf("%w: %s -> %s", ErrInvalidTransition, t.Status, next)
 	}
 	t.Status = next
@@ -120,6 +144,10 @@ func (t Task) Clone() Task {
 	if t.Input.Similarity != nil {
 		input := *t.Input.Similarity
 		t.Input.Similarity = &input
+	}
+	if t.Input.Player != nil {
+		input := *t.Input.Player
+		t.Input.Player = &input
 	}
 	if t.Result != nil {
 		result := t.Result.Clone()

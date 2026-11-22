@@ -59,13 +59,20 @@ func TestTrackValidation(t *testing.T) {
 	}
 }
 func TestTransitions(t *testing.T) {
-	statuses := []TaskStatus{StatusPending, StatusProcessing, StatusCompleted, StatusFailed, "bogus"}
+	statuses := []TaskStatus{StatusPending, StatusQueued, StatusProcessing, StatusCompleted, StatusFailed, "bogus"}
+	allowed := map[[2]TaskStatus]bool{
+		{StatusPending, StatusQueued}:       true,
+		{StatusPending, StatusProcessing}:   true,
+		{StatusQueued, StatusProcessing}:    true,
+		{StatusProcessing, StatusCompleted}: true,
+		{StatusProcessing, StatusFailed}:    true,
+	}
 	for _, from := range statuses {
 		for _, to := range statuses {
 			t.Run(string(from)+"/"+string(to), func(t *testing.T) {
 				task := Task{Status: from}
 				err := task.Transition(to)
-				valid := from == StatusPending && to == StatusProcessing || from == StatusProcessing && (to == StatusCompleted || to == StatusFailed)
+				valid := allowed[[2]TaskStatus{from, to}]
 				if valid {
 					if err != nil || task.Status != to {
 						t.Fatalf("%+v %v", task, err)
@@ -93,5 +100,81 @@ func TestInputValidation(t *testing.T) {
 	}
 	if got := CleanTags([]string{" Calm ", "calm", "", "Unknown", "Bright"}); !reflect.DeepEqual(got, []string{"Bright", "Calm"}) {
 		t.Fatal(got)
+	}
+}
+
+func TestPlayerInputValidation(t *testing.T) {
+	valid := []PlayerInput{
+		{Action: ActionStatus},
+		{Action: ActionSetVolume, Volume: 20},
+		{Action: ActionSetVolume, Volume: -2, RelativeVolume: true},
+		{Action: ActionSeek, PositionMs: 30000},
+		{Action: ActionSetPlayMode, PlayMode: PlayModeShuffle},
+		{Action: ActionLibrary, Offset: 5, Limit: 10},
+		{Action: ActionPlayTrack, TrackIndex: 3},
+	}
+	for _, input := range valid {
+		task := TaskInput{Kind: PlayerControl, Player: &input}
+		if err := task.Validate(); err != nil {
+			t.Errorf("%+v rejected: %v", input, err)
+		}
+	}
+	invalid := []PlayerInput{
+		{Action: "dance"},
+		{Action: ActionSetVolume, Volume: 300},
+		{Action: ActionSetVolume, RelativeVolume: true},
+		{Action: ActionSeek, PositionMs: -1},
+		{Action: ActionSetPlayMode, PlayMode: 9},
+		{Action: ActionLibrary, Limit: 0},
+		{Action: ActionLibrary, Limit: 51},
+		{Action: ActionPlayTrack, TrackIndex: -1},
+	}
+	for _, input := range invalid {
+		task := TaskInput{Kind: PlayerControl, Player: &input}
+		if !errors.Is(task.Validate(), ErrInvalidInput) {
+			t.Errorf("%+v accepted", input)
+		}
+	}
+	if !errors.Is((TaskInput{Kind: PlayerControl}).Validate(), ErrInvalidInput) {
+		t.Error("player task without input accepted")
+	}
+}
+
+func TestPlayerResultCloneIsDeep(t *testing.T) {
+	original := TaskResult{Kind: PlayerControl, Player: &PlayerResult{
+		Action:   ActionSeek,
+		Playback: &PlaybackChange{ProgressSamplesMs: []int{1, 2}},
+		Track:    &TrackChange{Before: &PlayerTrack{Title: "A"}},
+		Library:  []PlayerLibraryItem{{Title: "B"}},
+	}}
+	copied := original.Clone()
+	copied.Player.Playback.ProgressSamplesMs[0] = 99
+	copied.Player.Track.Before.Title = "changed"
+	copied.Player.Library[0].Title = "changed"
+	if original.Player.Playback.ProgressSamplesMs[0] != 1 || original.Player.Track.Before.Title != "A" || original.Player.Library[0].Title != "B" {
+		t.Fatal("player result clone shares mutable data")
+	}
+}
+
+func TestPlayTrackWithLocatorAcceptsAnyLibraryPosition(t *testing.T) {
+	locator := `<path>a:\x.flac<cue_id>-1<name>x`
+	valid := []PlayerInput{
+		{Action: ActionPlayTrack, TrackIndex: 2971, Locator: locator},
+		{Action: ActionPlayTrack, TrackIndex: 4, Locator: locator, Album: "Abbey Road"},
+	}
+	for _, input := range valid {
+		if err := input.Validate(); err != nil {
+			t.Errorf("%+v rejected: %v", input, err)
+		}
+	}
+	invalid := []PlayerInput{
+		{Action: ActionPlayTrack, TrackIndex: 2971},
+		{Action: ActionPlayTrack, TrackIndex: -1, Locator: locator},
+		{Action: ActionPlayTrack, Album: "Abbey Road"},
+	}
+	for _, input := range invalid {
+		if !errors.Is(input.Validate(), ErrInvalidInput) {
+			t.Errorf("%+v accepted", input)
+		}
 	}
 }

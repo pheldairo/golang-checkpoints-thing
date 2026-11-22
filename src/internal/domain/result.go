@@ -44,6 +44,7 @@ type TaskResult struct {
 	Playlist   *PlaylistResult   `json:",omitempty"`
 	Analysis   *AnalysisResult   `json:",omitempty"`
 	Similarity *SimilarityResult `json:",omitempty"`
+	Player     *PlayerResult     `json:",omitempty"`
 }
 
 func (r TaskResult) Validate(kind TaskType) error {
@@ -55,6 +56,9 @@ func (r TaskResult) Validate(kind TaskType) error {
 		count++
 	}
 	if r.Similarity != nil {
+		count++
+	}
+	if r.Player != nil {
 		count++
 	}
 	if count != 1 || r.Kind != kind {
@@ -71,6 +75,10 @@ func (r TaskResult) Validate(kind TaskType) error {
 		}
 	case DiscoverSimilarTracks:
 		if r.Similarity != nil {
+			return nil
+		}
+	case PlayerControl:
+		if r.Player != nil {
 			return nil
 		}
 	}
@@ -116,6 +124,10 @@ func (r TaskResult) Clone() TaskResult {
 			result.DuplicateGroups[i] = append([]string(nil), ids...)
 		}
 		r.Analysis = &result
+	}
+	if r.Player != nil {
+		result := r.Player.Clone()
+		r.Player = &result
 	}
 	return r
 }
