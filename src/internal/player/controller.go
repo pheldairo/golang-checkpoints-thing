@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"setlist/internal/domain"
-	"setlist/internal/hibylink/session"
+	"setlist/internal/playerlink/session"
 )
 
 var ErrControllerClosed = errors.New("player controller is closed")

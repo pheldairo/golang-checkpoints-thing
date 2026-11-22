@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"setlist/internal/domain"
-	"setlist/internal/hibylink/session"
+	"setlist/internal/playerlink/session"
 )
 
 const minimumSeekTrackMs = 40000
@@ -31,9 +31,9 @@ func (r integrationRun) status() *domain.PlayerStatus {
 }
 
 func TestIntegrationAgainstPlayer(t *testing.T) {
-	host := os.Getenv("HIBYLINK_TARGET")
+	host := os.Getenv("PLAYER_TARGET")
 	if host == "" {
-		t.Skip("set HIBYLINK_TARGET to a player or fake player host to run")
+		t.Skip("set PLAYER_TARGET to a player or fake player host to run")
 	}
 	run := integrationRun{t: t, controller: NewController(session.DefaultConfig(host))}
 	defer run.controller.Close()

@@ -9,8 +9,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"setlist/internal/hibylink/session"
 	"setlist/internal/player"
+	"setlist/internal/playerlink/session"
 )
 
 func main() {
@@ -22,11 +22,11 @@ func main() {
 
 func run(args []string) error {
 	flags := flag.NewFlagSet("tui", flag.ContinueOnError)
-	host := flags.String("player", "", "HiBy player (or fake player) host, required")
-	dataPort := flags.Int("player-data-port", session.DefaultDataPort, "player HiByLink data port")
-	heartbeatPort := flags.Int("player-heartbeat-port", session.DefaultHeartbeatPort, "player HiByLink heartbeat port")
+	host := flags.String("player", "", "music player (or fake player) host, required")
+	dataPort := flags.Int("player-data-port", session.DefaultDataPort, "player data port")
+	heartbeatPort := flags.Int("player-heartbeat-port", session.DefaultHeartbeatPort, "player heartbeat port")
 	refresh := flags.Duration("refresh", time.Second, "how often the player status is read")
-	cachePath := flags.String("library-cache", "", "file the player library is saved to (default hiby-library-HOST.json)")
+	cachePath := flags.String("library-cache", "", "file the player library is saved to (default player-library-HOST.json)")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil

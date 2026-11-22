@@ -50,7 +50,7 @@ type librarySavedMsg struct {
 }
 
 func defaultCachePath(host string) string {
-	return fmt.Sprintf("hiby-library-%s.json", host)
+	return fmt.Sprintf("player-library-%s.json", host)
 }
 
 func readLibraryCache(path string) tea.Cmd {
@@ -79,7 +79,7 @@ func saveLibraryCache(path string, cache libraryCacheFile) error {
 	if err != nil {
 		return err
 	}
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".hiby-library-*.tmp")
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".player-library-*.tmp")
 	if err != nil {
 		return err
 	}

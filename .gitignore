@@ -17,5 +17,5 @@ src/output.txt
 .DS_Store
 __pycache__/
 
-hiby-library-*.json
-.hiby-library-*.tmp
+player-library-*.json
+.player-library-*.tmp

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"setlist/internal/hibylink/protocol"
+	"setlist/internal/playerlink/protocol"
 )
 
-var ErrPoisoned = errors.New("hibylink connection is unusable after a failed exchange")
+var ErrPoisoned = errors.New("player connection is unusable after a failed exchange")
 
 const (
 	firstSerial    = 11

@@ -8,7 +8,7 @@ import (
 	"net"
 	"time"
 
-	"setlist/internal/hibylink/protocol"
+	"setlist/internal/playerlink/protocol"
 )
 
 var (

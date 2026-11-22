@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/rpc"
 )
 
 var ErrUnusable = errors.New("player session is not usable")

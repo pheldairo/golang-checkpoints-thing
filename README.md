@@ -1,8 +1,8 @@
 # KBTU Golang Checkpoints
 
 A Go command-line program for working with a music library, and since
-Checkpoint 2, for controlling a HiBy music player over its HiByLink Wi-Fi
-protocol. Every piece of work is a **task**: tasks are created, validated,
+Checkpoint 2, for controlling a networked music player over its Wi-Fi
+remote-control protocol. Every piece of work is a **task**: tasks are created, validated,
 stored in memory, and processed concurrently by a fixed **worker pool** fed
 through a bounded queue.
 
@@ -18,7 +18,7 @@ Music-library tasks (Checkpoint 1, unchanged):
 | `generate_playlist` | a scored playlist within a duration and track limit, by genre and mood |
 | `discover_similar_tracks` | the tracks most similar to a reference track |
 
-Player tasks (`player_control`, new in Checkpoint 2) send one HiByLink command
+Player tasks (`player_control`, new in Checkpoint 2) send one player command
 and **confirm the effect by reading the player back**. The player's replies
 don't prove a command worked, so a task is only completed after the readback
 matches:
@@ -126,7 +126,7 @@ both move a task to Processing.
 | task ID counter | `atomic.Uint64` | concurrent `Create` calls get unique IDs |
 | queue + `stopped` flag (`service.Pool`) | `sync.Mutex` + channel ownership | the pool is the only sender and the only closer |
 | one player session (`player.Controller`) | `sync.Mutex` (control lock) | a control is several RPCs (read baseline → set → read back); two player tasks must not interleave |
-| HiByLink data connection (`session.Session`) | `sync.Mutex` (RPC lock) | one request in flight, so a reply is never matched to the wrong request |
+| player data connection (`session.Session`) | `sync.Mutex` (RPC lock) | one request in flight, so a reply is never matched to the wrong request |
 | heartbeat connection | owned by one goroutine | no lock needed; nothing else touches it |
 
 - No lock is held while a task is processed. Music tasks run in parallel even
@@ -183,44 +183,40 @@ What the tests cover:
   - double shutdown
   - Submit racing Shutdown without losing an accepted task
 - `internal/storage`: an atomic Enqueue under 50 concurrent attempts, and queued-only start.
-- `internal/hibylink`:
+- `internal/playerlink`:
   - byte-exact framing against an archived real request
   - codec, CRC, reassembly and corruption
   - RPC poisoning and argument refusal
   - session open, heartbeat, failure and idempotent close
 - `internal/player`: every control's confirm, refuse and not-confirmed paths, plus controller serialization and reopening a lost session.
 
-## 11. HiByLink player control
+## 11. Player control
 
-`internal/hibylink` is a Go port of the core of the Python reference
-implementation in `../hibylink_python`:
+`internal/playerlink` is a Go port of the core of a Python reference
+implementation of the player's protocol (kept outside this repository):
 - `protocol`: CRC, signature codec, messages, frames and reassembly
 - `rpc`: the reviewed operation allowlist and a client that becomes unusable after any failed exchange
 - `session`: model check, a pipelined heartbeat on its own goroutine, an RST close
 
-`internal/player` ports the control logic. Not ported:
-- albums
+`internal/player` ports the control logic, including albums and cover art.
+Not ported:
 - notification-based activation
-- cover art
 - Bluetooth
 - discovery
 - automatic reconnect supervision (the controller simply opens a new session on the next task)
 - evidence recording
 - the web control page
 
-The Python `FakeDevice` stays in Python. To try everything without a player,
-from the parent folder that contains `hibylink_python`, start the fake bridge:
-
-```sh
-python3 -m hibylink_python.tools.fake_player      # 127.0.0.1:4001 data, :4002 heartbeat
-```
+The fake player stays in the Python reference project. To try everything
+without a player, start its `tools.fake_player` module from that project's
+parent folder. It listens on `127.0.0.1:4001` (data) and `:4002` (heartbeat).
 
 Then, in `src/`:
 
 ```sh
 go run ./cmd/setlist -player 127.0.0.1
 go run ./cmd/setlist -player 127.0.0.1 -player-actions status,next,previous
-HIBYLINK_TARGET=127.0.0.1 go test -race -run Integration -v ./internal/player/
+PLAYER_TARGET=127.0.0.1 go test -race -run Integration -v ./internal/player/
 ```
 
 The fake's state resets on every new connection.
@@ -264,8 +260,8 @@ go run ./cmd/tui -player $PLAYER      # real player
   image or the old one.
 - The image is drawn as 24×12 cells, two pixels per cell, using `▀` with the
   top pixel as the foreground colour and the bottom pixel as the background.
-- Covers come back stored bottom-up (confirmed live, see
-  `hibylink_python/media/cover.py`), so the remote flips them vertically. It
+- Covers come back stored bottom-up (confirmed live by the Python reference
+  project), so the remote flips them vertically. It
   also crops them to a centred square.
 - When there is no cover, or the image can't be decoded, a placeholder is shown.
 
@@ -273,7 +269,7 @@ go run ./cmd/tui -player $PLAYER      # real player
 - On first start the remote reads every track, then the album list, with a
   progress bar (`tracks 1200/4399 · 27%`). Each 50-row page is a separate
   request, so status updates and keys keep working while it loads.
-- Everything is saved to `hiby-library-<host>.json` in the current directory
+- Everything is saved to `player-library-<host>.json` in the current directory
   (`-library-cache FILE` to change it), and later starts load that file
   instantly. A saved file without albums only reads the album list. `R` reads
   everything from the player again.
@@ -344,18 +340,18 @@ the defaults follow the Python control page:
 
 On Linux the sockets also use `TCP_THIN_LINEAR_TIMEOUTS`, so retransmissions
 don't back off past the player's 5 s heartbeat deadline. The player appears to
-serve one HiByLink client at a time: if another remote or the HiBy app is
-connected, a new session times out on its first request.
+serve one remote-control client at a time: if another remote or the
+player's phone app is connected, a new session times out on its first request.
 
 To see real covers with the fake player, the bridge serves the covers captured
-from the device in `hibylink_python/artifacts` by default (still bottom-up, as
+from the device (kept in the Python reference project) by default (still bottom-up, as
 the device sends them). Use `--cover FILE.jpg` (repeatable) to serve your own,
 or `--synthetic-covers` to keep the fake's non-image placeholders.
 
-### Testing on a real HiBy player
+### Testing on a real player
 
-1. Put the player on the same Wi-Fi as the computer and switch HiByLink on in
-   its settings. Note its IP address.
+1. Put the player on the same Wi-Fi as the computer and switch its Wi-Fi
+   remote control on in its settings. Note its IP address.
 2. From `src/`, run each command and check that its task ends `completed`:
 
 ```sh
@@ -371,17 +367,13 @@ go run ./cmd/setlist -player $PLAYER -player-actions seek:30000
 go run ./cmd/setlist -player $PLAYER -player-actions mode:2
 go run ./cmd/setlist -player $PLAYER -player-actions play-track:0
 go run ./cmd/setlist -player $PLAYER                              # full concurrent demo
-HIBYLINK_TARGET=$PLAYER go test -race -run Integration -v ./internal/player/
+PLAYER_TARGET=$PLAYER go test -race -run Integration -v ./internal/player/
 go run ./cmd/tui -player $PLAYER                                 # remote: reads + saves the library once
 ```
 
 The integration test restores volume, play mode and play state at the end. It
 does change the current track, through `play_track`.
 
-If the status check fails, check that the Python reference can read the same
-device. From the parent folder, run:
-
-```sh
-python3 -m hibylink_python.tools.read_device --target $PLAYER \
-  --output hibylink_python/fixtures/live/NEW_UNIQUE_DIR --operations getModelNumber
-```
+If the status check fails, check that the Python reference project's
+`tools.read_device` module can read the same device (one `getModelNumber`
+read into a new output folder).

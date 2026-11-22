@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"setlist/internal/domain"
-	"setlist/internal/hibylink/protocol"
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/protocol"
+	"setlist/internal/playerlink/rpc"
 )
 
 const (

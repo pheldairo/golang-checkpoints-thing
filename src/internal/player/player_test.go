@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"setlist/internal/domain"
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/rpc"
 )
 
 func volumePlayer(volume *int, maximum int) *stubPlayer {

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"setlist/internal/hibylink/protocol"
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/protocol"
+	"setlist/internal/playerlink/rpc"
 )
 
 var (

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"setlist/internal/hibylink/rpc"
-	"setlist/internal/hibylink/scripted"
+	"setlist/internal/playerlink/rpc"
+	"setlist/internal/playerlink/scripted"
 )
 
 func fastConfig(server *scripted.Server) Config {

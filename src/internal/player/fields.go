@@ -1,6 +1,6 @@
 package player
 
-import "setlist/internal/hibylink/protocol"
+import "setlist/internal/playerlink/protocol"
 
 type fieldReader struct {
 	values protocol.Values

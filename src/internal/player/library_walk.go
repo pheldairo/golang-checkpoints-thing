@@ -1,6 +1,6 @@
 package player
 
-import "setlist/internal/hibylink/rpc"
+import "setlist/internal/playerlink/rpc"
 
 type libraryWalk struct {
 	items        []libraryItem

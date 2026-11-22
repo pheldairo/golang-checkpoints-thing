@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var ErrProtocol = errors.New("hibylink protocol error")
+var ErrProtocol = errors.New("player protocol error")
 
 func protocolError(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", ErrProtocol, fmt.Sprintf(format, args...))

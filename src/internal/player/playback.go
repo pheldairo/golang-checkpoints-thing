@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"setlist/internal/domain"
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/rpc"
 )
 
 type playStateChange struct {

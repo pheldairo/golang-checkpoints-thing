@@ -8,9 +8,9 @@ import (
 	"os"
 
 	"setlist/internal/domain"
-	"setlist/internal/hibylink/session"
 	"setlist/internal/importer"
 	"setlist/internal/player"
+	"setlist/internal/playerlink/session"
 	"setlist/internal/processor"
 	"setlist/internal/service"
 	"setlist/internal/storage"
@@ -40,9 +40,9 @@ func parseOptions(args []string, out io.Writer) (options, bool, error) {
 	flags.StringVar(&parsed.libraryRoot, "library", "", "explicit mounted music directory; default uses built-in sample")
 	flags.IntVar(&parsed.workers, "workers", service.DefaultWorkers, "number of worker goroutines")
 	flags.IntVar(&parsed.queueCapacity, "queue", service.DefaultQueueCapacity, "capacity of the bounded task queue")
-	flags.StringVar(&parsed.playerHost, "player", "", "HiBy player (or fake player) host; enables player control tasks")
-	flags.IntVar(&parsed.dataPort, "player-data-port", session.DefaultDataPort, "player HiByLink data port")
-	flags.IntVar(&parsed.heartbeatPort, "player-heartbeat-port", session.DefaultHeartbeatPort, "player HiByLink heartbeat port")
+	flags.StringVar(&parsed.playerHost, "player", "", "music player (or fake player) host; enables player control tasks")
+	flags.IntVar(&parsed.dataPort, "player-data-port", session.DefaultDataPort, "player data port")
+	flags.IntVar(&parsed.heartbeatPort, "player-heartbeat-port", session.DefaultHeartbeatPort, "player heartbeat port")
 	flags.StringVar(&parsed.playerActions, "player-actions", defaultPlayerActions, "comma-separated player tasks, see README")
 	if err := flags.Parse(args); err != nil {
 		if err == flag.ErrHelp {

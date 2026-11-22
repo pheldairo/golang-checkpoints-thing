@@ -2,7 +2,7 @@ package player
 
 import (
 	"setlist/internal/domain"
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/rpc"
 )
 
 type numberReader struct {

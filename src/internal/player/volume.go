@@ -2,7 +2,7 @@ package player
 
 import (
 	"setlist/internal/domain"
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/rpc"
 )
 
 func (d device) setVolume(input domain.PlayerInput) (domain.PlayerResult, error) {

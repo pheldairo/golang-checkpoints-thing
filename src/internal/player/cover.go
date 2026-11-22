@@ -3,8 +3,8 @@ package player
 import (
 	"fmt"
 
-	"setlist/internal/hibylink/protocol"
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/protocol"
+	"setlist/internal/playerlink/rpc"
 )
 
 func (d device) cover() ([]byte, error) {

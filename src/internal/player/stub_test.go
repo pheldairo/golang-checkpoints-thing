@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"setlist/internal/hibylink/rpc"
+	"setlist/internal/playerlink/rpc"
 )
 
 var testTiming = Timing{ConfirmWait: 60 * time.Millisecond, PollInterval: time.Millisecond, ProgressProbe: time.Millisecond}

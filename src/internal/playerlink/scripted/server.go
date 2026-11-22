@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"setlist/internal/hibylink/protocol"
+	"setlist/internal/playerlink/protocol"
 )
 
 var (

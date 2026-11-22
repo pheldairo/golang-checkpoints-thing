@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"setlist/internal/hibylink/protocol"
-	"setlist/internal/hibylink/scripted"
+	"setlist/internal/playerlink/protocol"
+	"setlist/internal/playerlink/scripted"
 )
 
 func connectClient(t *testing.T, handler scripted.Handler) (*Client, *scripted.Server) {
