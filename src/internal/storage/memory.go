@@ -3,12 +3,13 @@ package storage
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"setlist/internal/domain"
 )
 
-// Memory owns task values. Reads and writes detach all nested mutable fields.
 type Memory struct {
+	mu    sync.RWMutex
 	tasks map[string]domain.Task
 	order []string
 }
@@ -24,7 +25,9 @@ func (m *Memory) Add(t domain.Task) error {
 	if err := t.Input.Validate(); err != nil {
 		return err
 	}
-	if _, ok := m.tasks[t.ID]; ok {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, exists := m.tasks[t.ID]; exists {
 		return fmt.Errorf("%w: %s", domain.ErrDuplicateTask, t.ID)
 	}
 	if m.tasks == nil {
@@ -36,58 +39,88 @@ func (m *Memory) Add(t domain.Task) error {
 }
 
 func (m *Memory) Get(id string) (domain.Task, error) {
-	t, ok := m.tasks[id]
-	if !ok {
-		return domain.Task{}, fmt.Errorf("%w: %s", domain.ErrTaskNotFound, id)
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	task, err := m.find(id)
+	if err != nil {
+		return domain.Task{}, err
 	}
-	return t.Clone(), nil
+	return task.Clone(), nil
 }
 
-// Start and Finish are the only mutation operations; no caller can overwrite an
-// existing task's identity or input, or bypass its lifecycle through storage.
+func (m *Memory) List() []domain.Task {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	tasks := make([]domain.Task, 0, len(m.order))
+	for _, id := range m.order {
+		tasks = append(tasks, m.tasks[id].Clone())
+	}
+	return tasks
+}
+
+func (m *Memory) Enqueue(id string) (domain.Task, error) {
+	return m.move(id, domain.StatusPending, domain.StatusQueued, domain.ErrInvalidState)
+}
+
 func (m *Memory) Start(id string) (domain.Task, error) {
-	t, err := m.Get(id)
-	if err != nil {
-		return t, err
-	}
-	if t.Status != domain.StatusPending {
-		return t, fmt.Errorf("%w: %s", domain.ErrAlreadyProcessed, id)
-	}
-	if err = t.Transition(domain.StatusProcessing); err != nil {
-		return t, err
-	}
-	m.tasks[id] = t.Clone()
-	return t, nil
+	return m.move(id, domain.StatusPending, domain.StatusProcessing, domain.ErrAlreadyProcessed)
+}
+
+func (m *Memory) StartQueued(id string) (domain.Task, error) {
+	return m.move(id, domain.StatusQueued, domain.StatusProcessing, domain.ErrInvalidState)
 }
 
 func (m *Memory) Finish(id string, result domain.TaskResult, processingErr error) (domain.Task, error) {
-	t, err := m.Get(id)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	task, err := m.find(id)
 	if err != nil {
-		return t, err
+		return domain.Task{}, err
 	}
 	next := domain.StatusCompleted
 	if processingErr != nil {
 		next = domain.StatusFailed
 	}
-	if err = t.Transition(next); err != nil {
-		return t, err
+	if err = task.Transition(next); err != nil {
+		return task.Clone(), err
 	}
 	if processingErr != nil {
-		t.Error = processingErr.Error()
+		task.Error = processingErr.Error()
 	} else {
-		if err = result.Validate(t.Input.Kind); err != nil {
+		if err = result.Validate(task.Input.Kind); err != nil {
 			return domain.Task{}, err
 		}
-		t.Result = &result
+		stored := result.Clone()
+		task.Result = &stored
 	}
-	m.tasks[id] = t.Clone()
-	return t.Clone(), nil
+	m.tasks[id] = task
+	return task.Clone(), nil
 }
 
-func (m *Memory) List() []domain.Task {
-	out := make([]domain.Task, 0, len(m.order))
-	for _, id := range m.order {
-		out = append(out, m.tasks[id].Clone())
+func (m *Memory) move(id string, required, next domain.TaskStatus, wrongState error) (domain.Task, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	task, err := m.find(id)
+	if err != nil {
+		return domain.Task{}, err
 	}
-	return out
+	if task.Status == domain.StatusQueued && required != domain.StatusQueued {
+		return task.Clone(), fmt.Errorf("%w: %s is already queued for a worker", domain.ErrInvalidState, id)
+	}
+	if task.Status != required {
+		return task.Clone(), fmt.Errorf("%w: %s is %s, needs %s", wrongState, id, task.Status, required)
+	}
+	if err = task.Transition(next); err != nil {
+		return task.Clone(), err
+	}
+	m.tasks[id] = task
+	return task.Clone(), nil
+}
+
+func (m *Memory) find(id string) (domain.Task, error) {
+	task, ok := m.tasks[id]
+	if !ok {
+		return domain.Task{}, fmt.Errorf("%w: %s", domain.ErrTaskNotFound, id)
+	}
+	return task, nil
 }
