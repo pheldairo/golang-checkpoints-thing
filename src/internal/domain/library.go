@@ -3,9 +3,11 @@ package domain
 import (
 	"fmt"
 	"sort"
+	"sync"
 )
 
 type Library struct {
+	mu     sync.RWMutex
 	tracks map[string]Track
 }
 
@@ -23,6 +25,8 @@ func (l *Library) Add(t Track) error {
 	if err := t.Validate(); err != nil {
 		return err
 	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if _, ok := l.tracks[t.ID]; ok {
 		return fmt.Errorf("%w: %s", ErrDuplicateTrack, t.ID)
 	}
@@ -34,6 +38,8 @@ func (l *Library) Add(t Track) error {
 }
 
 func (l *Library) Get(id string) (Track, error) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	t, ok := l.tracks[id]
 	if !ok {
 		return Track{}, fmt.Errorf("%w: %s", ErrTrackNotFound, id)
@@ -42,6 +48,8 @@ func (l *Library) Get(id string) (Track, error) {
 }
 
 func (l *Library) List() []Track {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	out := make([]Track, 0, len(l.tracks))
 	for _, t := range l.tracks {
 		out = append(out, t.Clone())

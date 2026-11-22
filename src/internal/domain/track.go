@@ -1,22 +1,9 @@
 package domain
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
-)
-
-var (
-	ErrInvalidTrack      = errors.New("invalid track")
-	ErrTrackNotFound     = errors.New("track not found")
-	ErrDuplicateTrack    = errors.New("duplicate track ID")
-	ErrInvalidResult     = errors.New("invalid processor result")
-	ErrInvalidInput      = errors.New("invalid task input")
-	ErrTaskNotFound      = errors.New("task not found")
-	ErrDuplicateTask     = errors.New("duplicate task ID")
-	ErrInvalidTransition = errors.New("invalid task transition")
-	ErrAlreadyProcessed  = errors.New("task already processed")
 )
 
 // Normalize is used for comparisons only; display values retain their spelling.
